@@ -2,12 +2,13 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import io
+from openpyxl.styles import PatternFill # Excel ထဲတွင် အရောင်ခြယ်ရန်
 
 # 1. Page Configuration
-st.set_page_config(page_title="Professional Audit Engine", page_icon="⚖️", layout="wide")
+st.set_page_config(page_title="Color-Coded Audit Engine", page_icon="🎨", layout="wide")
 
-st.title("⚖️ Advanced Ledger & Audit Automation Engine")
-st.markdown("Power Query သဘောတရားအတိုင်း Format မတူသော Sheet များကို ညှိဖတ်နိုင်ပြီး **Debit/Credit Logic** များကို စစ်ဆေးကာ **App ပေါ်တွင် ပြင်ဆင်ပြီးမှ Report ပြန်ထုတ်နိုင်သော** စနစ် ဖြစ်ပါသည်။")
+st.title("🎨 Color-Coded Advanced Audit Automation Engine")
+st.markdown("အမှားများကို **ဇယားပေါ်တွင် အရောင်ဖြင့် ချက်ချင်းပြသပေးပြီး** တည်းဖြတ်ကာ Excel ထုတ်လျှင်လည်း အရောင်ပါရှိမည့် စနစ် ဖြစ်ပါသည်။")
 st.markdown("---")
 
 # 2. Sidebar Upload
@@ -19,40 +20,26 @@ if uploaded_file is not None:
         excel_file = pd.ExcelFile(uploaded_file)
         sheet_names = excel_file.sheet_names
         
-        st.sidebar.success(f"📂 ဖိုင်ဖတ်ခြင်းအောင်မြင်သည်။ Sheet ({len(sheet_names)}) ခု ပါဝင်သည်။")
-        
         # --- POWER QUERY STYLE DYNAMIC MAPPING ---
-        st.subheader("🛠️ Step 1: Power Query Style Column Alignment")
-        st.info("💡 Sheet အသီးသီးရှိ ကော်လံခေါင်းစဉ်များ မတူညီပါက စံသတ်မှတ်ချက်အတိုင်း အောက်တွင် ညှိပေးပါ။")
-        
         sheet_mappings = {}
         df_list = []
         
-        # Sheet တစ်ခုချင်းစီအတွက် Mapping ယူခြင်း
         for sheet in sheet_names:
             preview_df = pd.read_excel(uploaded_file, sheet_name=sheet, nrows=2)
             cols = list(preview_df.columns)
             
-            with st.expander(f"📄 Sheet Name: {sheet} - Columns Configuration"):
-                col_m1, col_m2, col_m3 = st.columns(3)
-                with col_m1:
-                    m_vch = st.selectbox("Voucher/ID Column", cols, key=f"vch_{sheet}")
-                    m_acc = st.selectbox("Account Name Column", cols, key=f"acc_{sheet}")
-                with col_m2:
-                    m_deb = st.selectbox("Debit (ဝင်ငွေ/ကြွေးမြီ) Column", cols, key=f"deb_{sheet}")
-                with col_m3:
-                    m_cre = st.selectbox("Credit (ထွက်ငွေ/ရရန်) Column", cols, key=f"cre_{sheet}")
+            with st.sidebar.expander(f"📄 Sheet: {sheet} Columns"):
+                m_vch = st.selectbox("Voucher/ID", cols, key=f"vch_{sheet}")
+                m_acc = st.selectbox("Account Name", cols, key=f"acc_{sheet}")
+                m_deb = st.selectbox("Debit", cols, key=f"deb_{sheet}")
+                m_cre = st.selectbox("Credit", cols, key=f"cre_{sheet}")
                 
-                sheet_mappings[sheet] = {
-                    'vch': m_vch, 'acc': m_acc, 'deb': m_deb, 'cre': m_cre
-                }
+                sheet_mappings[sheet] = {'vch': m_vch, 'acc': m_acc, 'deb': m_deb, 'cre': m_cre}
         
-        # ဒေတာများကို ပေါင်းစပ်ပြီး Standard Format ပြောင်းလဲခြင်း
         for sheet in sheet_names:
             raw_df = pd.read_excel(uploaded_file, sheet_name=sheet)
             if not raw_df.empty:
                 maps = sheet_mappings[sheet]
-                
                 processed_df = pd.DataFrame()
                 processed_df['Voucher_No'] = raw_df[maps['vch']].astype(str).str.strip()
                 processed_df['Account_Name'] = raw_df[maps['acc']].astype(str).str.strip()
@@ -60,111 +47,104 @@ if uploaded_file is not None:
                 processed_df['Credit'] = pd.to_numeric(raw_df[maps['cre']], errors='coerce').fillna(0)
                 processed_df['Sheet_Source'] = sheet
                 
-                # မူရင်း ကော်လံများကိုပါ တစ်ခါတည်း သိမ်းထားမည်
                 for col in raw_df.columns:
                     if col not in maps.values():
                         processed_df[f"Orig_{col}"] = raw_df[col]
-                        
                 df_list.append(processed_df)
                 
-        # Main Combined DataFrame
         combined_df = pd.concat(df_list, ignore_index=True)
-        st.success("✅ Power Query ပုံစံအတိုင်း ဒေတာအားလုံးကို စံနှုန်းတစ်ခုတည်းအဖြစ် ပေါင်းစပ်ပြီးပါပြီ။")
         
         st.markdown("---")
         
-        # --- STEP 2: LIVE DATA EDITING (IN-APP DATA EDITOR) ---
-        st.subheader("📝 Step 2: Live Ledger Data Review & Editing")
-        st.markdown("💡 အောက်ပါ ဇယားကွက်ထဲတွင် မှားယွင်းနေသော စာရင်းများကို **တိုက်ရိုက်ကလစ်နှိပ်၍ ပြင်ဆင်နိုင်ပါသည်။** ပြင်ဆင်ပြီးပါက အောက်က Audit Result တွင် ချက်ချင်း ပြောင်းလဲသွားမည် ဖြစ်သည်။")
+        # --- STEP 2: LIVE DATA REVIEW & EDITING ---
+        st.subheader("📝 Step 1: Live Review & Edit Ledger Data")
+        st.markdown("💡 အောက်ပါ ဇယားတွင် ဒေတာများကို တိုက်ရိုက်ကလစ်နှိပ်၍ ပြင်ဆင်နိုင်ပါသည်။")
         
-        # Streamlit Data Editor ကိုသုံးပြီး အပြန်အလှန် ပြင်ဆင်နိုင်အောင် လုပ်ခြင်း
         edited_df = st.data_editor(combined_df, num_rows="dynamic", use_container_width=True, key="ledger_editor")
         
         st.markdown("---")
         
-        # --- STEP 3: ADVANCED AUDIT LOGIC RULES ---
-        st.subheader("🔍 Step 3: Debit / Credit Audit Exceptions Report")
+        # --- STEP 3: COLOR HIGHLIGHTING LOGIC ---
+        st.subheader("🔍 Step 2: Automated Audit Rules & Color Coding")
+        st.info("🚨 **အရောင်သတ်မှတ်ချက်:** [ အနီရောင် = Debit/Credit လွဲမှားမှု ] | [ အဝါရောင် = Voucher နံပါတ် ထပ်နေမှု ] | [ မီးခိုးရောင် = Account နာမည်မပါမှု ]")
         
-        # Threshold Settings
-        high_val_limit = st.number_input("🚨 သံသယဖြစ်ဖွယ် အဝိုင်းလိုက် ငွေပမာဏကြီးများ သတ်မှတ်ရန် (High-Value Threshold)", value=50000)
-        
-        # 1. Unbalanced / Invalid Transactions Rule
-        # Logic: Debit ကော Credit ကော တူညီစွာ ရှိနေခြင်း (သို့) နှစ်ခုလုံး သုည ဖြစ်နေခြင်း
-        unbalanced_df = edited_df[
-            ((edited_df['Debit'] == edited_df['Credit']) & (edited_df['Debit'] != 0)) | 
-            ((edited_df['Debit'] == 0) & (edited_df['Credit'] == 0))
-        ]
-        
-        # 2. Duplicate Vouchers Rule
-        # Logic: Voucher နံပါတ် တူညီပြီး စာရင်းနှစ်ခါထပ်နေခြင်း
-        duplicate_vch_df = edited_df[edited_df.duplicated(subset=['Voucher_No'], keep=False) & (edited_df['Voucher_No'] != 'nan')]
-        
-        # 3. High Value & Round Sum Anomaly
-        # Logic: သတ်မှတ်ပမာဏထက် ကြီးမားသော စာရင်းများ
-        high_value_df = edited_df[(edited_df['Debit'] >= high_val_limit) | (edited_df['Credit'] >= high_val_limit)]
-        
-        # 4. Missing Accounts
-        missing_acc_df = edited_df[(edited_df['Account_Name'].isna()) | (edited_df['Account_Name'] == 'nan') | (edited_df['Account_Name'] == '')]
-        
-        # Displaying Results in Tabs
-        t1, t2, t3, t4 = st.tabs([
-            f"❌ Unbalanced / Invalid Entries ({len(unbalanced_df)})", 
-            f"🆔 Duplicate Vouchers ({len(duplicate_vch_df)})", 
-            f"🚨 High Value >= {high_val_limit:,} ({len(high_value_df)})",
-            f"❓ Missing Accounts ({len(missing_acc_df)})"
-        ])
-        
-        with t1:
-            st.warning("Debit နှင့် Credit တစ်ပြိုင်နက်တည်း ရှိနေသော (သို့) နှစ်ခုလုံး သုညဖြစ်နေသော လွဲမှားသည့် စာရင်းများ")
-            st.dataframe(unbalanced_df, use_container_width=True)
-        with t2:
-            st.warning("Voucher နံပါတ် ထပ်နေသဖြင့် အမှား သို့မဟုတ် Double Entry ဖြစ်နိုင်ခြေရှိသော စာရင်းများ")
-            st.dataframe(duplicate_vch_df, use_container_width=True)
-        with t3:
-            st.error(f"ငွေပမာဏ ကြီးမားလွန်းသဖြင့် အထူးစစ်ဆေးရန် လိုအပ်သော စာရင်းများ")
-            st.dataframe(high_value_df, use_container_width=True)
-        with t4:
-            st.info("စာရင်းခေါင်းစဉ် (Account Name) ကျန်ရစ်ခဲ့သော အချက်အလက်များ")
-            st.dataframe(missing_acc_df, use_container_width=True)
+        # စာကြောင်းအလိုက် အရောင်ခြယ်မည့် Python Function (Streamlit UI အတွက်)
+        def highlight_audit_errors(row):
+            styles = [''] * len(row)
             
-        st.markdown("---")
+            # Rule 1: Unbalanced (Debit == Credit and not 0) သို့မဟုတ် (နှစ်ခုလုံး 0 ဖြစ်နေလျှင်) -> အနီရောင်
+            if ((row['Debit'] == row['Credit']) & (row['Debit'] != 0)) or ((row['Debit'] == 0) & (row['Credit'] == 0)):
+                return ['background-color: #ffcccc; color: black'] * len(row)
+                
+            # Rule 2: Account Name ကျန်ခဲ့လျှင် -> မီးခိုးရောင်
+            if pd.isna(row['Account_Name']) or row['Account_Name'] in ['nan', '']:
+                return ['background-color: #f0f0f0; color: black'] * len(row)
+                
+            return styles
+
+        # စတိုင်ကို Apply လုပ်ပြီး UI ပေါ်တွင် ပြသခြင်း
+        # Voucher ထပ်တာကိုတော့ ဇယားတစ်ခုလုံးအတိုင်း စစ်မှရလို့ သီးသန့်ကြည့်ရှုနိုင်အောင် Tabs နဲ့ပါ ပြထားပေးပါတယ်
+        duplicated_vouchers = edited_df[edited_df.duplicated(subset=['Voucher_No'], keep=False) & (edited_df['Voucher_No'] != 'nan')]['Voucher_No'].tolist()
         
-        # --- STEP 4: VISUAL ANALYTICS ---
-        st.subheader("📊 Step 4: Executive Visual Analytics")
-        c1, c2 = st.columns(2)
-        with c1:
-            fig_deb = px.box(edited_df, x='Sheet_Source', y='Debit', title='Debit Entries Distribution by Sheet', color='Sheet_Source')
-            st.plotly_chart(fig_deb, use_container_width=True)
-        with c2:
-            fig_cre = px.box(edited_df, x='Sheet_Source', y='Credit', title='Credit Entries Distribution by Sheet', color='Sheet_Source')
-            st.plotly_chart(fig_cre, use_container_width=True)
-            
-        st.markdown("---")
+        def highlight_cells(df):
+            # ပုံသေ DataFrame တစ်ခုဆောက်
+            style_df = pd.DataFrame('', index=df.index, columns=df.columns)
+            for idx, row in df.iterrows():
+                # Unbalanced Check -> Red
+                if ((row['Debit'] == row['Credit']) & (row['Debit'] != 0)) or ((row['Debit'] == 0) & (row['Credit'] == 0)):
+                    style_df.loc[idx] = 'background-color: #ffcccc; color: #800000; font-weight: bold;'
+                # Missing Account -> Gray
+                elif pd.isna(row['Account_Name']) or row['Account_Name'] in ['nan', '']:
+                    style_df.loc[idx] = 'background-color: #e0e0e0; color: #555555;'
+                # Duplicate Voucher -> Yellow
+                elif row['Voucher_No'] in duplicated_vouchers:
+                    style_df.loc[idx] = 'background-color: #fff2cc; color: #b2a100;'
+            return style_df
+
+        styled_output = edited_df.style.apply(highlight_cells, axis=None)
+        st.dataframe(styled_output, use_container_width=True)
         
-        # --- STEP 5: EXPORT RE-DESIGNED CLEAN DATA ---
-        st.subheader("📥 Step 5: Export Final Cleaned & Audited Ledger")
-        st.markdown("အထက်တွင် **သင်ကိုယ်တိုင် ပြင်ဆင်ပြီးသား (Finalized Clean Data)** နှင့် Audit တွေ့ရှိချက်များကို Multi-sheet Excel ဖိုင်တစ်ခုတည်းအဖြစ် ပြန်လည် ထုတ်ယူနိုင်ပါသည်။")
+        # --- EXPORT TO EXCEL WITH COLORS ---
+        st.markdown("---")
+        st.subheader("📥 Step 3: Export Color-Coded Excel Report")
+        st.markdown("ဒေါင်းလုဒ်လုပ်မည့် Excel ဖိုင်ထဲတွင်လည်း **အမှားများကို အရောင်ခြယ်ပြီးသား** တစ်ခါတည်း ပါသွားမည် ဖြစ်သည်။")
         
         buffer = io.BytesIO()
         with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
-            # တည်းဖြတ်ပြီးသား Ledger တစ်ခုလုံးကို Sheet ၁ အနေနဲ့ ထုတ်မယ်
-            edited_df.to_excel(writer, sheet_name='Final_Cleaned_Ledger', index=False)
-            # အမှားတွေ့ရှိချက်များကို သီးသန့် Sheet များခွဲထုတ်မယ်
-            if not unbalanced_df.empty:
-                unbalanced_df.to_excel(writer, sheet_name='Audit_Unbalanced', index=False)
-            if not duplicate_vch_df.empty:
-                duplicate_vch_df.to_excel(writer, sheet_name='Audit_Duplicates', index=False)
-            if not high_value_df.empty:
-                high_value_df.to_excel(writer, sheet_name='Audit_High_Values', index=False)
-                
+            edited_df.to_excel(writer, sheet_name='Audited_Ledger', index=False)
+            
+            # openpyxl ဖြင့် Excel Sheet ထဲဝင်ပြီး အရောင်လိုက်ခြယ်ခြင်း
+            workbook = writer.book
+            worksheet = writer.sheets['Audited_Ledger']
+            
+            # အရောင်သတ်မှတ်ချက်များ (Excel Fill)
+            red_fill = PatternFill(start_color="FFCCCC", end_color="FFCCCC", fill_type="solid")
+            yellow_fill = PatternFill(start_color="FFF2CC", end_color="FFF2CC", fill_type="solid")
+            gray_fill = PatternFill(start_color="E0E0E0", end_color="E0E0E0", fill_type="solid")
+            
+            # Excel Row များကို တစ်ကြောင်းချင်းပတ်ပြီး စစ်ဆေးအရောင်ခြယ်ခြင်း (Row 1 သည် Header မို့ Row 2 ကစသည်)
+            for i, (idx, row) in enumerate(edited_df.iterrows(), start=2):
+                # 1. Unbalanced -> Red
+                if ((row['Debit'] == row['Credit']) & (row['Debit'] != 0)) or ((row['Debit'] == 0) & (row['Credit'] == 0)):
+                    for col_num in range(1, len(edited_df.columns) + 1):
+                        worksheet.cell(row=i, column=col_num).fill = red_fill
+                # 2. Missing Account -> Gray
+                elif pd.isna(row['Account_Name']) or row['Account_Name'] in ['nan', '']:
+                    for col_num in range(1, len(edited_df.columns) + 1):
+                        worksheet.cell(row=i, column=col_num).fill = gray_fill
+                # 3. Duplicate Voucher -> Yellow
+                elif row['Voucher_No'] in duplicated_vouchers:
+                    for col_num in range(1, len(edited_df.columns) + 1):
+                        worksheet.cell(row=i, column=col_num).fill = yellow_fill
+                        
         st.download_button(
-            label="🚀 ပြင်ဆင်ပြီးသား Final Audit Report (Excel) ကို ဒေါင်းလုဒ်လုပ်ရန်",
+            label="🚀 အရောင်ပါဝင်သော Final Audit Report ကို ဒေါင်းလုဒ်လုပ်ရန်",
             data=buffer.getvalue(),
-            file_name="Finalized_Audited_Ledger_Report.xlsx",
+            file_name="Color_Coded_Audit_Ledger.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
         
     except Exception as e:
         st.error(f"Error တက်သွားပါသည်။ ကော်လံရွေးချယ်မှု ပြန်စစ်ပေးပါ။ အသေးစိတ်: {e}")
 else:
-    st.info("💡 စတင်ရန် ဘယ်ဘက် Sidebar မှတစ်ဆင့် သင့်ရဲ့ General Ledger Excel ဖိုင်ကို တင်သွင်း (Upload) ပေးပါ။")
+    st.info("💡 စတင်ရန် ဘယ်ဘက် Sidebar မှတစ်ဆင့် သင့်ရဲ့ Excel Ledger ဖိုင်ကို တင်သွင်း (Upload) ပေးပါ။")
